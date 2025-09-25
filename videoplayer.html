@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Chromebook Videoplayer</title>
+<meta name="author" content="Johnny Heggelund">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<style>
+body {
+margin: 0;
+background-color: #000;
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+overflow: hidden;
+}
+#video-player {
+width: 100vw;
+height: 100vh;
+object-fit: contain;
+position: absolute;
+top: 0;
+left: 0;
+z-index: 1;
+background-color: #000;
+}
+.controls-panel {
+position: fixed;
+top: 1.5rem;
+right: 1.5rem;
+z-index: 10;
+display: flex;
+flex-direction: column;
+gap: 15px;
+width: 200px;
+background-color: rgba(30, 30, 30, 0.8);
+padding: 1rem;
+border-radius: 8px;
+backdrop-filter: blur(5px);
+transition: opacity 0.4s ease-in-out;
+box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+.controls-panel.hidden {
+opacity: 0;
+pointer-events: none;
+}
+.btn {
+font-weight: bold;
+cursor: pointer;
+color: white;
+padding: 12px 18px;
+border-radius: 6px;
+text-align: center;
+transition: background-color 0.2s ease, transform 0.1s ease;
+user-select: none;
+}
+.btn:hover {
+filter: brightness(1.1);
+}
+.btn:active {
+transform: scale(0.98);
+}
+.main-label {
+background-color: #007bff;
+}
+input[type="file"] {
+display: none;
+}
+.volume-controls {
+background-color: #333;
+padding: 15px;
+border-radius: 6px;
+text-align: center;
+}
+.volume-controls label {
+font-size: 1.5rem;
+font-weight: normal;
+cursor: default;
+color: #fff;
+}
+#volume-level {
+font-weight: bold;
+color: #00e0ff;
+margin-left: 8px;
+}
+.volume-slider {
+width: 100%;
+margin-top: 10px;
+}
+h1 {
+color: #eeeeee;
+font-size: 1.2rem;
+text-align: center;
+margin-bottom: 0;
+margin-top: 0;
+}
+p {
+text-align: center;
+color: #eeeeee;
+margin: 0;
+}
+</style>
+</head>
+<body>
+<video id="video-player" controls crossOrigin="anonymous" autoplay>
+<track kind="subtitles" srclang="en" label="English" default>
+</video>
+<div class="controls-panel">
+<label for="file-upload" class="btn main-label">Choose Files</label>
+<input type="file" id="file-upload" accept=".mp4,.srt" multiple>
+<div class="volume-controls">
+<label for="volume-booster">🔊<b id="volume-level">100%</b></label>
+<input type="range" id="volume-booster" class="volume-slider" min="1" max="4" step="0.1" value="1" aria-label="Volume Booster">
+</div>
+</div>
+<script>
+const videoPlayer = document.getElementById('video-player');
+const fileUpload = document.getElementById('file-upload');
+const volumeBooster = document.getElementById('volume-booster');
+const volumeLevel = document.getElementById('volume-level');
+const controlsPanel = document.querySelector('.controls-panel');
+let inactivityTimeout;
+let videoUrl = null;
+let audioContext, gainNode;
+fileUpload.addEventListener('change', function (event) {
+const files = event.target.files;
+if (files.length === 0) return;
+const filesArray = Array.from(files);
+const videoFile = filesArray.find(f => f.name.toLowerCase().endsWith('.mp4') || f.name.toLowerCase().endsWith('.mkv'));
+let srtFile = filesArray.find(f => f.name.toLowerCase().endsWith('.srt'));
+if (videoFile) {
+if (videoUrl) {
+URL.revokeObjectURL(videoUrl);
+}
+videoUrl = URL.createObjectURL(videoFile);
+videoPlayer.src = videoUrl;
+if (!audioContext) {
+setupAudioBooster();
+}
+videoPlayer.load();
+const videoNameWithoutExt = videoFile.name.split('.').slice(0, -1).join('.');
+const expectedSrtName = `${videoNameWithoutExt.toLowerCase()}.srt`;
+const matchingSrtFile = filesArray.find(f => f.name.toLowerCase() === expectedSrtName);
+if (matchingSrtFile) {
+loadSrtFile(matchingSrtFile);
+}
+}
+else if (srtFile) {
+loadSrtFile(srtFile);
+}
+event.target.value = null;
+});
+function loadSrtFile(file) {
+const track = videoPlayer.textTracks[0];
+if (!track) {
+console.error("No text track found on the video element.");
+return;
+}
+track.mode = 'showing';
+const reader = new FileReader();
+reader.onload = function (e) {
+const srtContent = e.target.result;
+parseSrtAndAddCues(srtContent, track);
+};
+reader.readAsText(file, 'UTF-8');
+}
+volumeBooster.addEventListener('input', function (event) {
+if (gainNode) {
+const boostValue = parseFloat(event.target.value);
+gainNode.gain.value = boostValue;
+volumeLevel.textContent = `${Math.round(boostValue * 100)}%`;
+}
+});
+function hideControls() {
+if (!videoPlayer.paused && !controlsPanel.matches(':hover')) {
+controlsPanel.classList.add('hidden');
+}
+}
+function showControls() {
+controlsPanel.classList.remove('hidden');
+clearTimeout(inactivityTimeout);
+inactivityTimeout = setTimeout(hideControls, 3000);
+}
+videoPlayer.addEventListener('play', showControls);
+videoPlayer.addEventListener('pause', showControls);
+window.addEventListener('mousemove', showControls);
+showControls();
+function parseSrtAndAddCues(srtContent, track) {
+while (track.cues && track.cues.length > 0) {
+track.removeCue(track.cues[0]);
+}
+const cleanContent = srtContent.replace(/\r\n/g, '\n').replace(/^\uFEFF/, '');
+const blocks = cleanContent.split('\n\n');
+for (const block of blocks) {
+const trimmedBlock = block.trim();
+if (!trimmedBlock) continue;
+const lines = trimmedBlock.split('\n');
+if (lines.length < 2) continue;
+const timestampLine = lines.find(line => line.includes('-->'));
+if (!timestampLine) continue;
+const timeMatch = timestampLine.match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
+if (!timeMatch) continue;
+const startTime = timeStringToSeconds(timeMatch[1]);
+const endTime = timeStringToSeconds(timeMatch[2]);
+const cueText = lines.slice(lines.indexOf(timestampLine) + 1).join('\n');
+if (!isNaN(startTime) && !isNaN(endTime) && cueText) {
+const cue = new VTTCue(startTime, endTime, cueText);
+track.addCue(cue);
+}
+}
+}
+function timeStringToSeconds(timeString) {
+const parts = timeString.replace(',', '.').split(':');
+const secondsAndMillis = parts.pop().split('.');
+const hours = parseInt(parts[0] || '0', 10);
+const minutes = parseInt(parts[1] || '0', 10);
+const seconds = parseInt(secondsAndMillis[0] || '0', 10);
+const millis = parseInt(secondsAndMillis[1] || '0', 10);
+return (hours * 3600) + (minutes * 60) + seconds + (millis / 1000);
+}
+function setupAudioBooster() {
+if (audioContext) return;
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+audioContext = new AudioContext();
+if (audioContext.state === 'suspended') {
+audioContext.resume();
+}
+const source = audioContext.createMediaElementSource(videoPlayer);
+gainNode = audioContext.createGain();
+source.connect(gainNode);
+gainNode.connect(audioContext.destination);
+gainNode.gain.value = parseFloat(volumeBooster.value);
+}
+</script>
+</body>
+</html>

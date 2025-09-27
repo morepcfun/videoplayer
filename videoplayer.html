@@ -113,6 +113,15 @@ margin: 0;
 </div>
 </div>
 <script>
+// STATS-FETCHER-START
+fetch('https://www.chromebooker.com/stats/visitors.php', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json'
+},
+body: JSON.stringify({ page: window.location.href })
+});
+// STATS-FETCHER-END
 const videoPlayer = document.getElementById('video-player');
 const fileUpload = document.getElementById('file-upload');
 const volumeBooster = document.getElementById('volume-booster');

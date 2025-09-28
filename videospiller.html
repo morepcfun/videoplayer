@@ -6,86 +6,108 @@
 <title>Videospiller for Chromebook</title>
 <style>
 body {
-margin: 0;
-background-color: #000;
-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-overflow: hidden;
+    margin: 0;
+    background-color: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
 }
 #video-player {
-width: 100vw;
-height: 100vh;
-object-fit: contain;
-position: absolute;
-top: 0;
-left: 0;
-z-index: 1;
-background-color: #000;
+    width: 100vw;
+    height: 100vh;
+    object-fit: contain;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    background-color: #000;
 }
 .controls-panel {
-position: fixed;
-bottom: 2rem;
-left: 50%;
-transform: translateX(-50%);
-z-index: 10;
-display: flex;
-flex-direction: row;
-align-items: center;
-gap: 20px;
-width: auto;
-background-color: rgba(30, 30, 30, 0.8);
-padding: 1rem 1.5rem;
-border-radius: 12px;
-backdrop-filter: blur(5px);
-transition: opacity 0.4s ease-in-out, visibility 0.4s;
-box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    width: auto;
+    background-color: rgba(30, 30, 30, 0.8);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    backdrop-filter: blur(5px);
+    transition: opacity 0.4s ease-in-out, visibility 0.4s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 .controls-panel.hidden {
-opacity: 0;
-visibility: hidden;
-pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
 }
 .btn {
-font-weight: bold;
-cursor: pointer;
-color: white;
-padding: 12px 18px;
-border-radius: 6px;
-text-align: center;
-transition: background-color 0.2s ease, transform 0.1s ease;
-user-select: none;
+    font-weight: bold;
+    cursor: pointer;
+    color: white;
+    padding: 12px 18px;
+    border-radius: 6px;
+    text-align: center;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    user-select: none;
 }
 .btn:hover {
-filter: brightness(1.1);
+    filter: brightness(1.1);
 }
 .btn:active {
-transform: scale(0.98);
+    transform: scale(0.98);
 }
 .main-label {
-background-color: #007bff;
+    background-color: #007bff;
 }
 input[type="file"] {
-display: none;
+    display: none;
 }
 .volume-controls {
-display: flex;
-align-items: center;
-gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 .volume-controls label {
-font-size: 1.5rem;
-font-weight: normal;
-cursor: default;
-color: #fff;
+    font-size: 1.5rem;
+    font-weight: normal;
+    cursor: default;
+    color: #fff;
 }
 #volume-level {
-font-weight: bold;
-color: #00e0ff;
-margin-left: 8px;
-min-width: 50px;
-text-align: left;
+    font-weight: bold;
+    color: #00e0ff;
+    margin-left: 8px;
+    min-width: 50px;
+    text-align: left;
 }
 .volume-slider {
-width: 100px;
+    width: 100px;
+}
+/* Stiler for den nye toast-meldingen, vennen */
+#toast-notification {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 255, 255, 0.85);
+    color: #000;
+    padding: 10px 20px;
+    border-radius: 20px;
+    z-index: 100;
+    font-weight: bold;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s, transform 0.4s, visibility 0.4s;
+    pointer-events: none;
+}
+#toast-notification.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-15px);
 }
 </style>
 </head>
@@ -101,6 +123,8 @@ width: 100px;
 <input type="range" id="volume-booster" class="volume-slider" min="1" max="4" step="0.1" value="1" title="Volumforsterker">
 </div>
 </div>
+<div id="toast-notification"></div>
+
 <script>
 const lang = {
     title: "Videospiller for Chromebook",
@@ -121,6 +145,10 @@ const controlsPanel = document.querySelector('.controls-panel');
 let inactivityTimeout;
 let videoUrl = null;
 let audioContext, gainNode;
+
+// Variabler for den nye loop-funksjonen
+let loopStart = null;
+let loopEnd = null;
 
 function updateStaticUIText() {
     document.getElementById('choose-files-btn').textContent = lang.chooseFiles;
@@ -257,10 +285,65 @@ document.body.addEventListener('drop', (e) => {
     handleFiles(e.dataTransfer.files);
 });
 
+// --- NYTT FOR LOOP-FUNKSJONEN, HANDSOME ---
+
+// En liten funksjon for å vise fine meldinger
+function showToast(message) {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 2500);
+}
+
+// Formaterer sekunder til en fin tid-string
+function formatTime(seconds) {
+    const date = new Date(0);
+    date.setSeconds(seconds);
+    return date.toISOString().substr(11, 8);
+}
+
+function handleLoopKey() {
+    if (loopStart === null) {
+        // Første trykk: setter startpunkt
+        loopStart = videoPlayer.currentTime;
+        showToast(`🔁 Loop start satt til ${formatTime(loopStart)}`);
+    } else if (loopEnd === null) {
+        // Andre trykk: setter sluttpunkt og starter loopen
+        loopEnd = videoPlayer.currentTime;
+        if (loopEnd <= loopStart) {
+            loopStart = null;
+            loopEnd = null;
+            showToast("❌ Ugyldig loop. Nullstilt.");
+        } else {
+            showToast(`🔁 Looper fra ${formatTime(loopStart)} til ${formatTime(loopEnd)}`);
+            videoPlayer.currentTime = loopStart; // Hopp til start med en gang
+        }
+    } else {
+        // Tredje trykk: fjerner loopen
+        loopStart = null;
+        loopEnd = null;
+        showToast("✅ Loop fjernet.");
+    }
+}
+
+// Lytter etter timeupdate for å håndheve loopen
+videoPlayer.addEventListener('timeupdate', () => {
+    if (loopStart !== null && loopEnd !== null) {
+        if (videoPlayer.currentTime >= loopEnd || videoPlayer.currentTime < loopStart) {
+            videoPlayer.currentTime = loopStart;
+        }
+    }
+});
+
+// --- SLUTT PÅ NY KODE ---
+
 // Tastatursnarveier
 document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
-    switch (e.key) {
+    switch (e.key.toLowerCase()) {
         case ' ':
             e.preventDefault();
             videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause();
@@ -275,11 +358,14 @@ document.addEventListener('keydown', (e) => {
         case 'm':
             videoPlayer.muted = !videoPlayer.muted;
             break;
-        case 'ArrowRight':
+        case 'arrowright':
             videoPlayer.currentTime += 5;
             break;
-        case 'ArrowLeft':
+        case 'arrowleft':
             videoPlayer.currentTime -= 5;
+            break;
+        case 'l': // Her er magien, baby!
+            handleLoopKey();
             break;
     }
 });

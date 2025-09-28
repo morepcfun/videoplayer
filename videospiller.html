@@ -87,7 +87,6 @@ input[type="file"] {
 .volume-slider {
     width: 100px;
 }
-/* Stiler for den nye toast-meldingen, vennen */
 #toast-notification {
     position: fixed;
     bottom: 90px;
@@ -109,6 +108,74 @@ input[type="file"] {
     visibility: visible;
     transform: translateX(-50%) translateY(-15px);
 }
+
+/* Styling for den nye snarvei-boksen vår */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+}
+.modal-box {
+    background-color: #1e1e1e;
+    padding: 25px 35px;
+    border-radius: 12px;
+    border: 1px solid #00aaff;
+    box-shadow: 0 5px 25px rgba(0, 170, 255, 0.2);
+    color: #f0f0f0;
+    width: 90%;
+    max-width: 400px;
+}
+.modal-box h2 {
+    margin-top: 0;
+    color: #00aaff;
+    text-align: center;
+}
+.modal-box ul {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+}
+.modal-box li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+}
+.modal-box li:last-child {
+    border-bottom: none;
+}
+.modal-box span {
+    background-color: #333;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    color: #00e0ff;
+}
+#close-modal-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-top: 20px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+#close-modal-btn:hover {
+    background-color: #0056b3;
+}
 </style>
 </head>
 <body>
@@ -124,6 +191,21 @@ input[type="file"] {
 </div>
 </div>
 <div id="toast-notification"></div>
+
+<div id="shortcuts-modal" class="modal-overlay">
+    <div class="modal-box">
+        <h2>Tastatursnarveier</h2>
+        <ul>
+            <li>Spill av / Pause <span>Mellomrom</span></li>
+            <li>Fullskjerm på/av <span>F</span></li>
+            <li>Demp lyd på/av <span>M</span></li>
+            <li>Spol fremover <span>→</span></li>
+            <li>Spol bakover <span>←</span></li>
+            <li>Loop kontroll <span>L</span></li>
+        </ul>
+        <button id="close-modal-btn">Lukk</button>
+    </div>
+</div>
 
 <script>
 const lang = {
@@ -142,11 +224,12 @@ const fileUpload = document.getElementById('file-upload');
 const volumeBooster = document.getElementById('volume-booster');
 const volumeLevel = document.getElementById('volume-level');
 const controlsPanel = document.querySelector('.controls-panel');
+const shortcutsModal = document.getElementById('shortcuts-modal');
+const closeModalBtn = document.getElementById('close-modal-btn');
 let inactivityTimeout;
 let videoUrl = null;
 let audioContext, gainNode;
 
-// Variabler for den nye loop-funksjonen
 let loopStart = null;
 let loopEnd = null;
 
@@ -276,7 +359,6 @@ function setupAudioBooster() {
     gainNode.gain.value = parseFloat(volumeBooster.value);
 }
 
-// Dra og slipp
 document.body.addEventListener('dragover', (e) => {
     e.preventDefault();
 });
@@ -285,9 +367,6 @@ document.body.addEventListener('drop', (e) => {
     handleFiles(e.dataTransfer.files);
 });
 
-// --- NYTT FOR LOOP-FUNKSJONEN, HANDSOME ---
-
-// En liten funksjon for å vise fine meldinger
 function showToast(message) {
     const toast = document.getElementById('toast-notification');
     if (!toast) return;
@@ -298,7 +377,6 @@ function showToast(message) {
     }, 2500);
 }
 
-// Formaterer sekunder til en fin tid-string
 function formatTime(seconds) {
     const date = new Date(0);
     date.setSeconds(seconds);
@@ -307,11 +385,9 @@ function formatTime(seconds) {
 
 function handleLoopKey() {
     if (loopStart === null) {
-        // Første trykk: setter startpunkt
         loopStart = videoPlayer.currentTime;
         showToast(`🔁 Loop start satt til ${formatTime(loopStart)}`);
     } else if (loopEnd === null) {
-        // Andre trykk: setter sluttpunkt og starter loopen
         loopEnd = videoPlayer.currentTime;
         if (loopEnd <= loopStart) {
             loopStart = null;
@@ -319,17 +395,15 @@ function handleLoopKey() {
             showToast("❌ Ugyldig loop. Nullstilt.");
         } else {
             showToast(`🔁 Looper fra ${formatTime(loopStart)} til ${formatTime(loopEnd)}`);
-            videoPlayer.currentTime = loopStart; // Hopp til start med en gang
+            videoPlayer.currentTime = loopStart;
         }
     } else {
-        // Tredje trykk: fjerner loopen
         loopStart = null;
         loopEnd = null;
         showToast("✅ Loop fjernet.");
     }
 }
 
-// Lytter etter timeupdate for å håndheve loopen
 videoPlayer.addEventListener('timeupdate', () => {
     if (loopStart !== null && loopEnd !== null) {
         if (videoPlayer.currentTime >= loopEnd || videoPlayer.currentTime < loopStart) {
@@ -338,11 +412,23 @@ videoPlayer.addEventListener('timeupdate', () => {
     }
 });
 
-// --- SLUTT PÅ NY KODE ---
+// Funksjonalitet for modal-boksen
+function showShortcuts() { shortcutsModal.style.display = 'flex'; }
+function hideShortcuts() { shortcutsModal.style.display = 'none'; }
 
-// Tastatursnarveier
+closeModalBtn.addEventListener('click', hideShortcuts);
+shortcutsModal.addEventListener('click', (e) => {
+    if (e.target === shortcutsModal) {
+        hideShortcuts();
+    }
+});
+
 document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
+    // Lukk modal med Escape-tasten
+    if (e.key === 'Escape') {
+        hideShortcuts();
+    }
     switch (e.key.toLowerCase()) {
         case ' ':
             e.preventDefault();
@@ -364,7 +450,7 @@ document.addEventListener('keydown', (e) => {
         case 'arrowleft':
             videoPlayer.currentTime -= 5;
             break;
-        case 'l': // Her er magien, baby!
+        case 'l':
             handleLoopKey();
             break;
     }
@@ -372,6 +458,8 @@ document.addEventListener('keydown', (e) => {
 
 updateStaticUIText();
 showControls();
+// Viser snarvei-boksen når siden lastes
+showShortcuts();
 </script>
 </body>
 </html>

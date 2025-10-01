@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Chromebook Videoplayer</title>
-<meta name="author" content="Johnny Heggelund">
-<link rel="icon" type="image/x-icon" href="favicon.ico">
+<title>Video Player App Online</title>
+<meta name="description" content="Browser Video Player with up to 400% Volume Boost and support for .srt Subtitle Files.">
+<meta name="author" content="AI Girl & Bossman">
+<meta name="robots" content="index, follow">
 <style>
 body {
 margin: 0;
@@ -25,22 +26,25 @@ background-color: #000;
 }
 .controls-panel {
 position: fixed;
-top: 1.5rem;
-right: 1.5rem;
+bottom: 2rem;
+left: 50%;
+transform: translateX(-50%);
 z-index: 10;
 display: flex;
-flex-direction: column;
-gap: 15px;
-width: 200px;
+flex-direction: row;
+align-items: center;
+gap: 20px;
+width: auto;
 background-color: rgba(30, 30, 30, 0.8);
-padding: 1rem;
-border-radius: 8px;
+padding: 1rem 1.5rem;
+border-radius: 12px;
 backdrop-filter: blur(5px);
-transition: opacity 0.4s ease-in-out;
+transition: opacity 0.4s ease-in-out, visibility 0.4s;
 box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 .controls-panel.hidden {
 opacity: 0;
+visibility: hidden;
 pointer-events: none;
 }
 .btn {
@@ -66,10 +70,9 @@ input[type="file"] {
 display: none;
 }
 .volume-controls {
-background-color: #333;
-padding: 15px;
-border-radius: 6px;
-text-align: center;
+display: flex;
+align-items: center;
+gap: 10px;
 }
 .volume-controls label {
 font-size: 1.5rem;
@@ -81,22 +84,98 @@ color: #fff;
 font-weight: bold;
 color: #00e0ff;
 margin-left: 8px;
+min-width: 50px;
+text-align: left;
 }
 .volume-slider {
+width: 100px;
+}
+#toast-notification {
+position: fixed;
+bottom: 90px;
+left: 50%;
+transform: translateX(-50%);
+background-color: rgba(0, 255, 255, 0.85);
+color: #000;
+padding: 10px 20px;
+border-radius: 20px;
+z-index: 100;
+font-weight: bold;
+opacity: 0;
+visibility: hidden;
+transition: opacity 0.4s, transform 0.4s, visibility 0.4s;
+pointer-events: none;
+}
+#toast-notification.show {
+opacity: 1;
+visibility: visible;
+transform: translateX(-50%) translateY(-15px);
+}
+.modal-overlay {
+position: fixed;
+top: 0;
+left: 0;
 width: 100%;
-margin-top: 10px;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.7);
+display: flex;
+justify-content: center;
+align-items: center;
+z-index: 1000;
+backdrop-filter: blur(3px);
 }
-h1 {
-color: #eeeeee;
-font-size: 1.2rem;
-text-align: center;
-margin-bottom: 0;
+.modal-box {
+background-color: #1e1e1e;
+padding: 25px 35px;
+border-radius: 12px;
+border: 1px solid #00aaff;
+box-shadow: 0 5px 25px rgba(0, 170, 255, 0.2);
+color: #f0f0f0;
+width: 90%;
+max-width: 400px;
+}
+.modal-box h2 {
 margin-top: 0;
-}
-p {
+color: #00aaff;
 text-align: center;
-color: #eeeeee;
-margin: 0;
+}
+.modal-box ul {
+list-style: none;
+padding: 0;
+margin: 20px 0;
+}
+.modal-box li {
+display: flex;
+justify-content: space-between;
+padding: 8px 0;
+border-bottom: 1px solid #333;
+}
+.modal-box li:last-child {
+border-bottom: none;
+}
+.modal-box span {
+background-color: #333;
+padding: 2px 8px;
+border-radius: 4px;
+font-weight: bold;
+color: #00e0ff;
+}
+#close-modal-btn {
+display: block;
+width: 100%;
+padding: 10px;
+margin-top: 20px;
+border: none;
+background-color: #007bff;
+color: white;
+border-radius: 6px;
+font-size: 16px;
+font-weight: bold;
+cursor: pointer;
+transition: background-color 0.2s;
+}
+#close-modal-btn:hover {
+background-color: #0056b3;
 }
 </style>
 </head>
@@ -105,63 +184,87 @@ margin: 0;
 <track kind="subtitles" srclang="en" label="English" default>
 </video>
 <div class="controls-panel">
-<label for="file-upload" class="btn main-label">Choose Files</label>
-<input type="file" id="file-upload" accept=".mp4,.srt" multiple>
+<label for="file-upload" class="btn main-label" id="choose-files-btn"></label>
+<input type="file" id="file-upload" accept=".mp4,.mkv,.srt" multiple>
 <div class="volume-controls">
 <label for="volume-booster">🔊<b id="volume-level">100%</b></label>
-<input type="range" id="volume-booster" class="volume-slider" min="1" max="4" step="0.1" value="1" aria-label="Volume Booster">
+<input type="range" id="volume-booster" class="volume-slider" min="1" max="4" step="0.1" value="1" title="Volume Booster">
+</div>
+</div>
+<div id="toast-notification"></div>
+<div id="shortcuts-modal" class="modal-overlay">
+<div class="modal-box">
+<h2>Keyboard Shortcuts</h2>
+<ul>
+<li>Play / Pause <span>Space</span></li>
+<li>Toggle Fullscreen <span>F</span></li>
+<li>Toggle Mute <span>M</span></li>
+<li>Seek Forward <span>→</span></li>
+<li>Seek Backward <span>←</span></li>
+<li>Loop Control <span>L</span></li>
+</ul>
+<button id="close-modal-btn">Close</button>
 </div>
 </div>
 <script>
-// STATS-FETCHER-START
-fetch('https://www.chromebooker.com/stats/visitors.php', {
-method: 'POST',
-headers: {
-'Content-Type': 'application/json'
-},
-body: JSON.stringify({ page: window.location.href })
-});
-// STATS-FETCHER-END
+const lang = {
+title: "Video Player App Online",
+chooseFiles: "Open Files (.mp4 and .srt)",
+subtitleLabel: "English",
+noTrackError: "No text track found on the video element.",
+noVideoOnClipboard: "Could not find a video on the clipboard.",
+pasteError: "Could not paste. Check console for error message."
+};
+document.title = lang.title;
 const videoPlayer = document.getElementById('video-player');
 const fileUpload = document.getElementById('file-upload');
 const volumeBooster = document.getElementById('volume-booster');
 const volumeLevel = document.getElementById('volume-level');
 const controlsPanel = document.querySelector('.controls-panel');
+const shortcutsModal = document.getElementById('shortcuts-modal');
+const closeModalBtn = document.getElementById('close-modal-btn');
 let inactivityTimeout;
 let videoUrl = null;
 let audioContext, gainNode;
-fileUpload.addEventListener('change', function (event) {
-const files = event.target.files;
+let loopStart = null;
+let loopEnd = null;
+function updateStaticUIText() {
+document.getElementById('choose-files-btn').textContent = lang.chooseFiles;
+const trackElement = videoPlayer.querySelector('track');
+if (trackElement) trackElement.label = lang.subtitleLabel;
+}
+function handleFiles(files) {
 if (files.length === 0) return;
 const filesArray = Array.from(files);
 const videoFile = filesArray.find(f => f.name.toLowerCase().endsWith('.mp4') || f.name.toLowerCase().endsWith('.mkv'));
-let srtFile = filesArray.find(f => f.name.toLowerCase().endsWith('.srt'));
+const srtFile = filesArray.find(f => f.name.toLowerCase().endsWith('.srt'));
 if (videoFile) {
 if (videoUrl) {
 URL.revokeObjectURL(videoUrl);
 }
 videoUrl = URL.createObjectURL(videoFile);
 videoPlayer.src = videoUrl;
-if (!audioContext) {
-setupAudioBooster();
-}
 videoPlayer.load();
 const videoNameWithoutExt = videoFile.name.split('.').slice(0, -1).join('.');
 const expectedSrtName = `${videoNameWithoutExt.toLowerCase()}.srt`;
 const matchingSrtFile = filesArray.find(f => f.name.toLowerCase() === expectedSrtName);
 if (matchingSrtFile) {
 loadSrtFile(matchingSrtFile);
-}
-}
-else if (srtFile) {
+} else if(srtFile) {
 loadSrtFile(srtFile);
 }
+} else if (srtFile) {
+loadSrtFile(srtFile);
+}
+}
+fileUpload.addEventListener('change', (event) => {
+handleFiles(event.target.files);
 event.target.value = null;
 });
 function loadSrtFile(file) {
 const track = videoPlayer.textTracks[0];
 if (!track) {
-console.error("No text track found on the video element.");
+console.error(lang.noTrackError);
 return;
 }
 track.mode = 'showing';
@@ -172,10 +275,10 @@ parseSrtAndAddCues(srtContent, track);
 };
 reader.readAsText(file, 'UTF-8');
 }
-volumeBooster.addEventListener('input', function (event) {
+volumeBooster.addEventListener('input', (event) => {
 if (gainNode) {
 const boostValue = parseFloat(event.target.value);
-gainNode.gain.value = boostValue;
+gainNode.gain.setValueAtTime(boostValue, audioContext.currentTime);
 volumeLevel.textContent = `${Math.round(boostValue * 100)}%`;
 }
 });
@@ -189,15 +292,17 @@ controlsPanel.classList.remove('hidden');
 clearTimeout(inactivityTimeout);
 inactivityTimeout = setTimeout(hideControls, 3000);
 }
-videoPlayer.addEventListener('play', showControls);
+videoPlayer.addEventListener('play', () => {
+if (!audioContext) setupAudioBooster();
+showControls();
+});
 videoPlayer.addEventListener('pause', showControls);
 window.addEventListener('mousemove', showControls);
-showControls();
 function parseSrtAndAddCues(srtContent, track) {
 while (track.cues && track.cues.length > 0) {
 track.removeCue(track.cues[0]);
 }
-const cleanContent = srtContent.replace(/\r\n/g, '\n').replace(/^\uFEFF/, '');
+const cleanContent = srtContent.replace(/\r\n|\r/g, '\n').replace(/^\uFEFF/, '');
 const blocks = cleanContent.split('\n\n');
 for (const block of blocks) {
 const trimmedBlock = block.trim();
@@ -218,27 +323,118 @@ track.addCue(cue);
 }
 }
 function timeStringToSeconds(timeString) {
-const parts = timeString.replace(',', '.').split(':');
-const secondsAndMillis = parts.pop().split('.');
-const hours = parseInt(parts[0] || '0', 10);
-const minutes = parseInt(parts[1] || '0', 10);
-const seconds = parseInt(secondsAndMillis[0] || '0', 10);
-const millis = parseInt(secondsAndMillis[1] || '0', 10);
-return (hours * 3600) + (minutes * 60) + seconds + (millis / 1000);
+const [hms, ms] = timeString.replace(',', '.').split('.');
+const parts = hms.split(':');
+return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]) + (parseInt(ms) / 1000);
 }
 function setupAudioBooster() {
 if (audioContext) return;
+try {
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 audioContext = new AudioContext();
-if (audioContext.state === 'suspended') {
-audioContext.resume();
-}
 const source = audioContext.createMediaElementSource(videoPlayer);
 gainNode = audioContext.createGain();
 source.connect(gainNode);
 gainNode.connect(audioContext.destination);
 gainNode.gain.value = parseFloat(volumeBooster.value);
+} catch (e) {
+console.error("Could not create audio context:", e);
+volumeBooster.disabled = true;
 }
+}
+document.body.addEventListener('dragover', (e) => {
+e.preventDefault();
+});
+document.body.addEventListener('drop', (e) => {
+e.preventDefault();
+handleFiles(e.dataTransfer.files);
+});
+function showToast(message) {
+const toast = document.getElementById('toast-notification');
+if (!toast) return;
+toast.textContent = message;
+toast.classList.add('show');
+setTimeout(() => {
+toast.classList.remove('show');
+}, 2500);
+}
+function formatTime(seconds) {
+const date = new Date(0);
+date.setSeconds(seconds);
+return date.toISOString().substr(11, 8);
+}
+function handleLoopKey() {
+if (loopStart === null) {
+loopStart = videoPlayer.currentTime;
+showToast(`🔁 Loop start set to ${formatTime(loopStart)}`);
+} else if (loopEnd === null) {
+loopEnd = videoPlayer.currentTime;
+if (loopEnd <= loopStart) {
+loopStart = null;
+loopEnd = null;
+showToast("❌ Invalid loop. Reset.");
+} else {
+showToast(`🔁 Looping from ${formatTime(loopStart)} to ${formatTime(loopEnd)}`);
+videoPlayer.currentTime = loopStart;
+}
+} else {
+loopStart = null;
+loopEnd = null;
+showToast("✅ Loop removed.");
+}
+}
+videoPlayer.addEventListener('timeupdate', () => {
+if (loopStart !== null && loopEnd !== null) {
+if (videoPlayer.currentTime >= loopEnd || videoPlayer.currentTime < loopStart) {
+videoPlayer.currentTime = loopStart;
+}
+}
+});
+function showShortcuts() { shortcutsModal.style.display = 'flex'; }
+function hideShortcuts() { shortcutsModal.style.display = 'none'; }
+closeModalBtn.addEventListener('click', hideShortcuts);
+shortcutsModal.addEventListener('click', (e) => {
+if (e.target === shortcutsModal) {
+hideShortcuts();
+}
+});
+document.addEventListener('keydown', (e) => {
+if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+if (e.key === 'Escape') {
+hideShortcuts();
+}
+switch (e.key.toLowerCase()) {
+case ' ':
+if (document.activeElement.tagName !== 'BUTTON') {
+e.preventDefault();
+videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause();
+}
+break;
+case 'f':
+if (document.fullscreenElement) {
+document.exitFullscreen();
+} else {
+document.body.requestFullscreen();
+}
+break;
+case 'm':
+videoPlayer.muted = !videoPlayer.muted;
+break;
+case 'arrowright':
+videoPlayer.currentTime += 5;
+break;
+case 'arrowleft':
+videoPlayer.currentTime -= 5;
+break;
+case 'l':
+handleLoopKey();
+break;
+}
+});
+updateStaticUIText();
+showControls();
+showShortcuts();
 </script>
+<script src="/stats/tracker.js" defer></script>
 </body>
 </html>

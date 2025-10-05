@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Videospiller</title>
+<style>
+body {
+margin: 0;
+background-color: #0d0d0d;
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+overflow: hidden;
+color: #f0f0f0;
+}
+#video-player {
+width: 100vw;
+height: 100vh;
+object-fit: contain;
+position: absolute;
+top: 0;
+left: 0;
+z-index: 1;
+background-color: #000;
+cursor: pointer;
+}
+.controls-container {
+position: fixed;
+bottom: 0;
+left: 0;
+width: 100%;
+z-index: 10;
+display: flex;
+flex-direction: column;
+align-items: center;
+padding: 0 1rem 1rem 1rem;
+box-sizing: border-box;
+transition: opacity 0.4s ease-in-out, visibility 0.4s;
+background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+}
+.controls-container.hidden {
+opacity: 0;
+visibility: hidden;
+pointer-events: none;
+}
+.controls-panel {
+display: flex;
+flex-direction: row;
+align-items: center;
+gap: 20px;
+width: auto;
+background-color: rgba(30, 30, 30, 0.85);
+padding: 1rem 1.5rem;
+border-radius: 12px;
+backdrop-filter: blur(8px);
+box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+.btn {
+font-weight: bold;
+cursor: pointer;
+color: white;
+padding: 12px 18px;
+border: none;
+border-radius: 6px;
+text-align: center;
+transition: background-color 0.2s ease, transform 0.1s ease;
+user-select: none;
+}
+.btn:hover { filter: brightness(1.1); }
+.btn:active { transform: scale(0.98); }
+.main-label {
+background-color: #007bff;
+}
+#help-btn {
+background-color: #4a4a4a;
+width: 45px;
+height: 45px;
+padding: 0;
+font-size: 1.2rem;
+}
+input[type="file"] {
+display: none;
+}
+.volume-controls {
+display: flex;
+align-items: center;
+gap: 10px;
+}
+.volume-controls label {
+font-size: 1.5rem;
+font-weight: normal;
+cursor: default;
+color: #fff;
+}
+#volume-level {
+font-weight: bold;
+color: #00e0ff;
+margin-left: 8px;
+min-width: 50px;
+text-align: left;
+}
+.volume-slider { width: 100px; }
+.progress-bar-container {
+width: 100%;
+max-width: 900px;
+height: 8px;
+background-color: rgba(255, 255, 255, 0.3);
+border-radius: 4px;
+cursor: pointer;
+margin-bottom: 15px;
+position: relative;
+}
+.progress-bar-fill {
+height: 100%;
+width: 0;
+background-color: #00aaff;
+border-radius: 4px;
+}
+.loop-marker {
+position: absolute;
+top: -3px;
+width: 4px;
+height: 14px;
+background-color: #00e0ff;
+border-radius: 2px;
+transform: translateX(-50%);
+display: none;
+}
+#toast-notification {
+position: fixed;
+bottom: 120px;
+left: 50%;
+transform: translateX(-50%);
+background-color: rgba(0, 255, 255, 0.85);
+color: #000;
+padding: 10px 20px;
+border-radius: 20px;
+z-index: 100;
+font-weight: bold;
+opacity: 0;
+visibility: hidden;
+transition: opacity 0.4s, transform 0.4s, visibility 0.4s;
+pointer-events: none;
+}
+#toast-notification.show {
+opacity: 1;
+visibility: visible;
+transform: translateX(-50%) translateY(-15px);
+}
+.modal-overlay {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.7);
+display: none;
+justify-content: center;
+align-items: center;
+z-index: 1000;
+backdrop-filter: blur(5px);
+}
+.modal-box {
+background-color: #1e1e1e;
+padding: 25px 35px;
+border-radius: 12px;
+border: 1px solid #00aaff;
+box-shadow: 0 5px 25px rgba(0, 170, 255, 0.2);
+width: 90%;
+max-width: 400px;
+}
+.modal-box h2 {
+margin-top: 0;
+color: #00aaff;
+text-align: center;
+}
+.modal-box ul {
+list-style: none;
+padding: 0;
+margin: 20px 0;
+}
+.modal-box li {
+display: flex;
+justify-content: space-between;
+padding: 8px 0;
+border-bottom: 1px solid #333;
+}
+.modal-box li:last-child { border-bottom: none; }
+.modal-box span {
+background-color: #333;
+padding: 2px 8px;
+border-radius: 4px;
+font-weight: bold;
+color: #00e0ff;
+}
+#close-modal-btn {
+display: block;
+width: 100%;
+padding: 12px;
+margin-top: 20px;
+background-color: #007bff;
+font-size: 16px;
+}
+</style>
+</head>
+<body>
+<video id="video-player" crossorigin="anonymous" autoplay="">
+<track kind="subtitles" srclang="no" label="Undertekst" default="">
+</video>
+<div class="controls-container">
+<div class="progress-bar-container" id="progress-bar-container">
+<div class="progress-bar-fill" id="progress-bar-fill"></div>
+<div class="loop-marker" id="loop-start-marker"></div>
+<div class="loop-marker" id="loop-end-marker"></div>
+</div>
+<div class="controls-panel">
+<label for="file-upload" class="btn main-label" id="choose-files-btn"></label>
+<input type="file" id="file-upload" accept=".mp4,.mkv,.srt" multiple="">
+<div class="volume-controls">
+<label for="volume-booster">🔊<b id="volume-level">100%</b></label>
+<input type="range" id="volume-booster" class="volume-slider" min="1" max="4" step="0.1" value="1" title="Volumforsterker">
+</div>
+<button class="btn" id="help-btn">?</button>
+</div>
+</div>
+<div id="toast-notification"></div>
+<div id="shortcuts-modal" class="modal-overlay">
+<div class="modal-box">
+<h2 id="shortcuts-title">Tastatursnarveier</h2>
+<ul id="shortcuts-list">
+<li>Spill av / Pause <span>Mellomrom</span></li>
+<li>Fullskjerm av/på <span>F</span></li>
+<li>Lyd av/på <span>M</span></li>
+<li>Spol fremover 5s <span>→</span></li>
+<li>Spol bakover 5s <span>←</span></li>
+<li>Loop-kontroll <span>L</span></li>
+</ul>
+<button id="close-modal-btn" class="btn">Lukk</button>
+</div>
+</div>
+<script>
+const lang = {
+title: "Videospiller",
+chooseFiles: "Åpne Filer (.mp4, .mkv, .srt)",
+subtitleLabel: "Undertekst",
+noTrackError: "Fant ikke tekstspor på videoelementet.",
+noVideoOnClipboard: "Fant ingen videofil på utklippstavlen.",
+pasteError: "Kunne ikke lime inn. Sjekk konsollen for feilmelding.",
+loopStartSet: (time) => `🔁 Loop-start satt til ${time}`,
+loopingFromTo: (start, end) => `🔁 Looper fra ${start} til ${end}`,
+invalidLoop: "❌ Ugyldig loop. Nullstilt.",
+loopRemoved: "✅ Loop fjernet."
+};
+const videoPlayer = document.getElementById('video-player');
+const fileUpload = document.getElementById('file-upload');
+const volumeBooster = document.getElementById('volume-booster');
+const volumeLevel = document.getElementById('volume-level');
+const controlsContainer = document.querySelector('.controls-container');
+const progressBarContainer = document.getElementById('progress-bar-container');
+const progressBarFill = document.getElementById('progress-bar-fill');
+const loopStartMarker = document.getElementById('loop-start-marker');
+const loopEndMarker = document.getElementById('loop-end-marker');
+const toast = document.getElementById('toast-notification');
+const shortcutsModal = document.getElementById('shortcuts-modal');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const helpBtn = document.getElementById('help-btn');
+let inactivityTimeout;
+let videoUrl = null;
+let audioContext, gainNode;
+let loopStart = null;
+let loopEnd = null;
+function updateStaticUIText() {
+document.title = lang.title;
+document.getElementById('choose-files-btn').textContent = lang.chooseFiles;
+const trackElement = videoPlayer.querySelector('track');
+if (trackElement) trackElement.label = lang.subtitleLabel;
+}
+function handleFiles(files) {
+if (!files || files.length === 0) return;
+const filesArray = Array.from(files);
+const videoFile = filesArray.find(f => f.name.toLowerCase().match(/\.(mp4|mkv)$/));
+const srtFile = filesArray.find(f => f.name.toLowerCase().endsWith('.srt'));
+if (videoFile) {
+if (videoUrl) URL.revokeObjectURL(videoUrl);
+videoUrl = URL.createObjectURL(videoFile);
+videoPlayer.src = videoUrl;
+videoPlayer.load();
+const videoNameWithoutExt = videoFile.name.split('.').slice(0, -1).join('.');
+const expectedSrtName = `${videoNameWithoutExt.toLowerCase()}.srt`;
+const matchingSrtFile = filesArray.find(f => f.name.toLowerCase() === expectedSrtName);
+if (matchingSrtFile) {
+loadSrtFile(matchingSrtFile);
+} else if (srtFile) {
+loadSrtFile(srtFile);
+}
+} else if (srtFile) {
+loadSrtFile(srtFile);
+}
+}
+function loadSrtFile(file) {
+const track = videoPlayer.textTracks[0];
+if (!track) {
+console.error(lang.noTrackError);
+return;
+}
+track.mode = 'showing';
+const reader = new FileReader();
+reader.onload = (e) => {
+parseSrtAndAddCues(e.target.result, track);
+};
+reader.readAsText(file, 'UTF-8');
+}
+function parseSrtAndAddCues(srtContent, track) {
+while (track.cues && track.cues.length > 0) {
+track.removeCue(track.cues[0]);
+}
+const cleanContent = srtContent.replace(/\r\n|\r/g, '\n').replace(/^\uFEFF/, '');
+const blocks = cleanContent.split('\n\n');
+for (const block of blocks) {
+const trimmedBlock = block.trim();
+if (!trimmedBlock) continue;
+const lines = trimmedBlock.split('\n');
+if (lines.length < 2) continue;
+const timestampLine = lines.find(line => line.includes('-->'));
+if (!timestampLine) continue;
+const timeMatch = timestampLine.match(/(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/);
+if (!timeMatch) continue;
+const startTime = timeStringToSeconds(timeMatch[1]);
+const endTime = timeStringToSeconds(timeMatch[2]);
+const cueText = lines.slice(lines.indexOf(timestampLine) + 1).join('\n');
+if (!isNaN(startTime) && !isNaN(endTime) && cueText) {
+const cue = new VTTCue(startTime, endTime, cueText);
+track.addCue(cue);
+}
+}
+}
+function timeStringToSeconds(timeString) {
+const [hms, ms] = timeString.replace(',', '.').split('.');
+const parts = hms.split(':');
+if (parts.length !== 3) return NaN;
+return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]) + (parseInt(ms) / 1000);
+}
+/**
+* Setter opp Web Audio API for volumforsterkning.
+*/
+function setupAudioBooster() {
+if (audioContext) return;
+try {
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+audioContext = new AudioContext();
+const source = audioContext.createMediaElementSource(videoPlayer);
+gainNode = audioContext.createGain();
+source.connect(gainNode);
+gainNode.connect(audioContext.destination);
+gainNode.gain.value = parseFloat(volumeBooster.value);
+} catch (e) {
+console.error("Kunne ikke opprette AudioContext:", e);
+volumeBooster.disabled = true;
+}
+}
+/**
+* Viser kontrollpanelet og starter en timer for å skjule det igjen.
+*/
+function showControls() {
+controlsContainer.classList.remove('hidden');
+document.body.style.cursor = 'default';
+clearTimeout(inactivityTimeout);
+inactivityTimeout = setTimeout(hideControls, 3000);
+}
+/**
+* Skjuler kontrollpanelet hvis videoen spilles av og musen ikke er over det.
+*/
+function hideControls() {
+if (!videoPlayer.paused && !controlsContainer.matches(':hover')) {
+controlsContainer.classList.add('hidden');
+document.body.style.cursor = 'none';
+}
+}
+/**
+* Viser en "toast" varsling med en melding.
+* @param {string} message - Meldingen som skal vises.
+*/
+function showToast(message) {
+if (!toast) return;
+toast.textContent = message;
+toast.classList.add('show');
+setTimeout(() => {
+toast.classList.remove('show');
+}, 2500);
+}
+/**
+* Formaterer sekunder til en HH:MM:SS-streng.
+* @param {number} seconds - Antall sekunder.
+* @returns {string} - Den formaterte tidsstrengen.
+*/
+function formatTime(seconds) {
+if (isNaN(seconds)) return "00:00:00";
+return new Date(seconds * 1000).toISOString().substr(11, 8);
+}
+/**
+* Håndterer logikk for å sette/fjerne loop-punkter.
+* Trykk 1: Setter startpunkt.
+* Trykk 2: Setter sluttpunkt og starter loop.
+* Trykk 3: Fjerner loop.
+*/
+function handleLoopKey() {
+if (loopStart === null) {
+loopStart = videoPlayer.currentTime;
+showToast(lang.loopStartSet(formatTime(loopStart)));
+} else if (loopEnd === null) {
+loopEnd = videoPlayer.currentTime;
+if (loopEnd <= loopStart) {
+loopStart = null;
+loopEnd = null;
+showToast(lang.invalidLoop);
+} else {
+showToast(lang.loopingFromTo(formatTime(loopStart), formatTime(loopEnd)));
+videoPlayer.currentTime = loopStart;
+}
+} else {
+loopStart = null;
+loopEnd = null;
+showToast(lang.loopRemoved);
+}
+updateLoopMarkers();
+}
+function updateLoopMarkers() {
+const duration = videoPlayer.duration;
+if (loopStart !== null && duration > 0) {
+loopStartMarker.style.left = `${(loopStart / duration) * 100}%`;
+loopStartMarker.style.display = 'block';
+} else {
+loopStartMarker.style.display = 'none';
+}
+if (loopEnd !== null && duration > 0) {
+loopEndMarker.style.left = `${(loopEnd / duration) * 100}%`;
+loopEndMarker.style.display = 'block';
+} else {
+loopEndMarker.style.display = 'none';
+}
+}
+function showShortcuts() { shortcutsModal.style.display = 'flex'; }
+function hideShortcuts() { shortcutsModal.style.display = 'none'; }
+fileUpload.addEventListener('change', (e) => {
+handleFiles(e.target.files);
+e.target.value = null;
+});
+document.body.addEventListener('dragover', (e) => e.preventDefault());
+document.body.addEventListener('drop', (e) => {
+e.preventDefault();
+handleFiles(e.dataTransfer.files);
+});
+document.addEventListener('paste', (e) => {
+e.preventDefault();
+const items = e.clipboardData.items;
+let fileFound = false;
+for (const item of items) {
+if (item.kind === 'file') {
+const file = item.getAsFile();
+if (file) {
+handleFiles([file]);
+fileFound = true;
+break;
+}
+}
+}
+if (!fileFound) {
+showToast(lang.noVideoOnClipboard);
+}
+});
+volumeBooster.addEventListener('input', (e) => {
+if (!gainNode) setupAudioBooster();
+if (gainNode) {
+const boostValue = parseFloat(e.target.value);
+gainNode.gain.setValueAtTime(boostValue, audioContext.currentTime);
+volumeLevel.textContent = `${Math.round(boostValue * 100)}%`;
+}
+});
+videoPlayer.addEventListener('play', showControls);
+videoPlayer.addEventListener('pause', showControls);
+videoPlayer.addEventListener('mouseenter', showControls);
+controlsContainer.addEventListener('mouseenter', showControls);
+document.addEventListener('mousemove', showControls);
+videoPlayer.addEventListener('click', () => videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause());
+videoPlayer.addEventListener('timeupdate', () => {
+if (loopStart !== null && loopEnd !== null) {
+if (videoPlayer.currentTime >= loopEnd || videoPlayer.currentTime < loopStart) {
+videoPlayer.currentTime = loopStart;
+}
+}
+if (videoPlayer.duration) {
+const progress = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+progressBarFill.style.width = `${progress}%`;
+}
+});
+videoPlayer.addEventListener('loadedmetadata', updateLoopMarkers);
+// Klikk for å spole på tidslinjen
+progressBarContainer.addEventListener('click', (e) => {
+const rect = progressBarContainer.getBoundingClientRect();
+const pos = (e.clientX - rect.left) / rect.width;
+videoPlayer.currentTime = pos * videoPlayer.duration;
+});
+helpBtn.addEventListener('click', showShortcuts);
+closeModalBtn.addEventListener('click', hideShortcuts);
+shortcutsModal.addEventListener('click', (e) => {
+if (e.target === shortcutsModal) hideShortcuts();
+});
+document.addEventListener('keydown', (e) => {
+if (e.target.tagName === 'INPUT' && e.target.type !== 'range') return;
+if (e.key === 'Escape') hideShortcuts();
+if (shortcutsModal.style.display === 'flex' && e.key !== ' ') return;
+switch (e.key.toLowerCase()) {
+case ' ':
+if (document.activeElement.tagName !== 'BUTTON') {
+e.preventDefault();
+videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause();
+}
+break;
+case 'f':
+document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+break;
+case 'm':
+videoPlayer.muted = !videoPlayer.muted;
+break;
+case 'arrowright':
+videoPlayer.currentTime += 5;
+break;
+case 'arrowleft':
+videoPlayer.currentTime -= 5;
+break;
+case 'l':
+handleLoopKey();
+break;
+}
+});
+updateStaticUIText();
+showControls();
+hideShortcuts();
+</script>
+</body>
+</html>

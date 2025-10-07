@@ -9,6 +9,10 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://morepcfun.github.io/videoplayer/">
   <style>
+        :root {
+            --subtitle-font-size: 2.5vh;
+        }
+
         body {
             margin: 0;
             background-color: #0d0d0d;
@@ -54,7 +58,7 @@
             display: flex;
             flex-direction: row;
             align-items: center;
-            gap: 20px;
+            gap: 15px; /* Adjusted gap for more buttons */
             width: auto;
             background-color: rgba(30, 30, 30, 0.85);
             padding: 1rem 1.5rem;
@@ -85,10 +89,10 @@
 
         ::cue {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            font-size: 2.5vh; /* Responsive size based on video height */
-            color: #ffffff; /* White text */
-            background-color: transparent; /* Remove any default background */
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); /* Sharp but soft black shadow */
+            font-size: var(--subtitle-font-size); /* Use CSS Variable */
+            color: #ffffff;
+            background-color: transparent;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
         }
 
         .main-label {
@@ -104,15 +108,24 @@
         }
 
         #toggle-subs-btn {
-            background-color: #4a4a4a; /* Default off state color */
+            background-color: #4a4a4a;
             width: 45px;
             height: 45px;
             padding: 0;
             font-size: 1.2rem;
         }
 
+        #decrease-subs-size-btn, #increase-subs-size-btn {
+            background-color: #4a4a4a;
+            width: 45px;
+            height: 45px;
+            padding: 0;
+            font-size: 1.8rem;
+            line-height: 45px; /* Helps vertically center the +/- sign */
+        }
+
         #toggle-subs-btn.active {
-            background-color: #007bff; /* Active state color (blue) */
+            background-color: #007bff;
         }
 
         input[type="file"] {
@@ -282,6 +295,8 @@
                 <input type="range" id="volume-booster" class="volume-slider" min="1" max="4" step="0.1" value="1" title="Volume Booster">
             </div>
             <button class="btn" id="toggle-subs-btn" title="Toggle Subtitles">CC</button>
+            <button class="btn" id="decrease-subs-size-btn" title="Decrease Subtitle Size">-</button>
+            <button class="btn" id="increase-subs-size-btn" title="Increase Subtitle Size">+</button>
             <button class="btn" id="help-btn">?</button>
         </div>
     </div>
@@ -336,6 +351,9 @@
         const closeModalBtn = document.getElementById('close-modal-btn');
         const helpBtn = document.getElementById('help-btn');
         const toggleSubsBtn = document.getElementById('toggle-subs-btn');
+        const decreaseSubsSizeBtn = document.getElementById('decrease-subs-size-btn');
+        const increaseSubsSizeBtn = document.getElementById('increase-subs-size-btn');
+
 
         // State variables
         let inactivityTimeout;
@@ -343,6 +361,7 @@
         let audioContext, gainNode;
         let loopStart = null;
         let loopEnd = null;
+        let currentSubtitleSize = 2.5; // in vh units
 
         /**
          * Updates static UI text elements based on the lang object.
@@ -352,6 +371,13 @@
             document.getElementById('choose-files-btn').textContent = lang.chooseFiles;
             const trackElement = videoPlayer.querySelector('track');
             if (trackElement) trackElement.label = lang.subtitleLabel;
+        }
+
+        /**
+         * Applies the current subtitle size to the CSS variable.
+         */
+        function updateSubtitleSize() {
+            document.documentElement.style.setProperty('--subtitle-font-size', `${currentSubtitleSize}vh`);
         }
 
         /**
@@ -630,6 +656,19 @@
             toggleSubsBtn.classList.toggle('active', !isShowing);
         });
 
+        // Subtitle size controls
+        increaseSubsSizeBtn.addEventListener('click', () => {
+            currentSubtitleSize += 0.2;
+            updateSubtitleSize();
+        });
+
+        decreaseSubsSizeBtn.addEventListener('click', () => {
+            if (currentSubtitleSize > 1.0) { // Prevent making it too small
+                currentSubtitleSize -= 0.2;
+                updateSubtitleSize();
+            }
+        });
+
         // Player controls visibility
         videoPlayer.addEventListener('play', showControls);
         videoPlayer.addEventListener('pause', showControls);
@@ -714,6 +753,7 @@
 
         // --- Initial Setup ---
         updateStaticUIText();
+        updateSubtitleSize();
         showControls();
         hideShortcuts();
     </script>

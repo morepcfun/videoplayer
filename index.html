@@ -8,8 +8,7 @@
     <meta name="author" content="Johnny Heggelund">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://morepcfun.github.io/videoplayer/">
-    <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABvElEQVR4AeyXQUsCQRTH366yVmxHiVqjLtLRr6BEhBfxYqAougfPgiDoNxGFFBT6Dl26KHbvUngQhTbq0FFIjOm9g0O2s2DLuguysj9mnLe8/5//4AzKgJ98Pn9RKpUMXddZMplk8Xh8jfF4zKbTqW0SiQSj3qhxn8vlzlCSP2RACgaDD5IkHfPVf07K5TIUi0UOfRe1QI0rRVGes9ns0aouFwqFAyzYFqdGi8WCBg5jjM//TlBrLxQKPWYyGYVqlACNroImzlVVbaKo7IkBFKZHx/RvvDQAgUDg1lMDuBX7nhqgffAN7EYC9XodarUap1qt0vZuhCkBWXA0tFotaLfblgwGAxiNRpzhcMjfbTbpvLH2YjIQDodB07Q1DMOAyWRii9lsBpFIxNKByQD+NgEvDEfBy25zA5ZvbqlgSoB06DaLxWKQTqcdIxqNUmsTQgO0DZVKBVKplGM0Gg2TOC0IDVDBLXwDfgJ+An4ClgkY829wGtHhZmlAu/sApxEa6PV6c7x83kTFba+h7islQH/krlHsHXHtIfHlcnlJBqDb7T51Op0TXFBXwNfnoRP87rHqTSNqnvb7/ZcfAAAA//+UhRssAAAABklEQVQDAB+nmbgHFm2vAAAAAElFTkSuQmCC">
-    <style>
+  <style>
         body {
             margin: 0;
             background-color: #0d0d0d;
@@ -84,6 +83,14 @@
             transform: scale(0.98);
         }
 
+        ::cue {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 2.5vh; /* Responsive size based on video height */
+            color: #ffffff; /* White text */
+            background-color: transparent; /* Remove any default background */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9); /* Sharp but soft black shadow */
+        }
+
         .main-label {
             background-color: #007bff;
         }
@@ -94,6 +101,18 @@
             height: 45px;
             padding: 0;
             font-size: 1.2rem;
+        }
+
+        #toggle-subs-btn {
+            background-color: #4a4a4a; /* Default off state color */
+            width: 45px;
+            height: 45px;
+            padding: 0;
+            font-size: 1.2rem;
+        }
+
+        #toggle-subs-btn.active {
+            background-color: #007bff; /* Active state color (blue) */
         }
 
         input[type="file"] {
@@ -262,6 +281,7 @@
                 <label for="volume-booster">🔊<b id="volume-level">100%</b></label>
                 <input type="range" id="volume-booster" class="volume-slider" min="1" max="4" step="0.1" value="1" title="Volume Booster">
             </div>
+            <button class="btn" id="toggle-subs-btn" title="Toggle Subtitles">CC</button>
             <button class="btn" id="help-btn">?</button>
         </div>
     </div>
@@ -315,6 +335,7 @@
         const shortcutsModal = document.getElementById('shortcuts-modal');
         const closeModalBtn = document.getElementById('close-modal-btn');
         const helpBtn = document.getElementById('help-btn');
+        const toggleSubsBtn = document.getElementById('toggle-subs-btn');
 
         // State variables
         let inactivityTimeout;
@@ -339,6 +360,8 @@
          */
         function handleFiles(files) {
             if (!files || files.length === 0) return;
+
+            toggleSubsBtn.classList.remove('active');
 
             const filesArray = Array.from(files);
             const videoFile = filesArray.find(f => f.name.toLowerCase().match(/\.(mp4|mkv)$/));
@@ -376,6 +399,7 @@
                 return;
             }
             track.mode = 'showing';
+            toggleSubsBtn.classList.add('active');
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -542,7 +566,7 @@
                 loopEndMarker.style.display = 'none';
             }
         }
-        
+
         /** Shows the shortcuts modal. */
         function showShortcuts() {
             shortcutsModal.style.display = 'flex';
@@ -594,6 +618,16 @@
                 gainNode.gain.setValueAtTime(boostValue, audioContext.currentTime);
                 volumeLevel.textContent = `${Math.round(boostValue * 100)}%`;
             }
+        });
+
+        // Subtitle toggle
+        toggleSubsBtn.addEventListener('click', () => {
+            const track = videoPlayer.textTracks[0];
+            if (!track || !track.cues || track.cues.length === 0) return; // Don't toggle if there are no subtitles loaded
+
+            const isShowing = track.mode === 'showing';
+            track.mode = isShowing ? 'hidden' : 'showing';
+            toggleSubsBtn.classList.toggle('active', !isShowing);
         });
 
         // Player controls visibility

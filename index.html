@@ -547,7 +547,7 @@
          */
         function showControls() {
             controlsContainer.classList.remove('hidden');
-            document.body.style.cursor = 'default';
+            videoPlayer.style.cursor = 'pointer';
             clearTimeout(inactivityTimeout);
             inactivityTimeout = setTimeout(hideControls, 3000);
         }
@@ -558,7 +558,7 @@
         function hideControls() {
             if (!videoPlayer.paused && !controlsContainer.matches(':hover')) {
                 controlsContainer.classList.add('hidden');
-                document.body.style.cursor = 'none';
+                videoPlayer.style.cursor = 'none';
             }
         }
 

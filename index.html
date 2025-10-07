@@ -8,8 +8,6 @@
     <meta name="author" content="Johnny Heggelund">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://morepcfun.github.io/videoplayer/">
-    <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABvElEQVR4AeyXQUsCQRTH366yVmxHiVqjLtLRr6BEhBfxYqAougfPgiDoNxGFFBT6Dl26KHbvUngQhTbq0FFIjOm9g0O2s2DLuguysj9mnLe8/5//4AzKgJ98Pn9RKpUMXddZMplk8Xh8jfF4zKbTqW0SiQSj3qhxn8vlzlCSP2RACgaDD5IkHfPVf07K5TIUi0UOfRe1QI0rRVGes9ns0aouFwqFAyzYFqdGi8WCBg5jjM//TlBrLxQKPWYyGYVqlACNroImzlVVbaKo7IkBFKZHx/RvvDQAgUDg1lMDuBX7nhqgffAN7EYC9XodarUap1qt0vZuhCkBWXA0tFotaLfblgwGAxiNRpzhcMjfbTbpvLH2YjIQDodB07Q1DMOAyWRii9lsBpFIxNKByQD+NgEvDEfBy25zA5ZvbqlgSoB06DaLxWKQTqcdIxqNUmsTQgO0DZVKBVKplGM0Gg2TOC0IDVDBLXwDfgJ+An4ClgkY829wGtHhZmlAu/sApxEa6PV6c7x83kTFba+h7islQH/krlHsHXHtIfHlcnlJBqDb7T51Op0TXFBXwNfnoRP87rHqTSNqnvb7/ZcfAAAA//+UhRssAAAABklEQVQDAB+nmbgHFm2vAAAAAElFTkSuQmCC">
-
   <style>
         :root {
             --subtitle-font-size: 2.5vh;
@@ -109,12 +107,13 @@
             font-size: 1.2rem;
         }
 
-        #toggle-subs-btn, #filter-sdh-btn {
+        #toggle-subs-btn, #filter-sdh-btn, #fullscreen-btn {
             background-color: #4a4a4a;
             width: 45px;
             height: 45px;
             padding: 0;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
+            line-height: 45px;
         }
 
         #decrease-subs-size-btn, #increase-subs-size-btn {
@@ -296,10 +295,11 @@
                 <label for="volume-booster">🔊<b id="volume-level">100%</b></label>
                 <input type="range" id="volume-booster" class="volume-slider" min="1" max="4" step="0.1" value="1" title="Volume Booster">
             </div>
+            <button class="btn" id="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
             <button class="btn" id="toggle-subs-btn" title="Toggle Subtitles">CC</button>
             <button class="btn" id="decrease-subs-size-btn" title="Decrease Subtitle Size">-</button>
             <button class="btn" id="increase-subs-size-btn" title="Increase Subtitle Size">+</button>
-            <button class="btn" id="filter-sdh-btn" title="Filter Descriptions">[ ]</button>
+            <button class="btn" id="filter-sdh-btn" title="Filter Descriptions">🧏</button>
             <button class="btn" id="help-btn">?</button>
         </div>
     </div>
@@ -357,6 +357,7 @@
         const decreaseSubsSizeBtn = document.getElementById('decrease-subs-size-btn');
         const increaseSubsSizeBtn = document.getElementById('increase-subs-size-btn');
         const filterSdhBtn = document.getElementById('filter-sdh-btn');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
 
 
         // State variables
@@ -367,7 +368,7 @@
         let loopEnd = null;
         let currentSubtitleSize = 2.5; // in vh units
         let parsedSrtCues = [];
-        let isSdhFilterActive = false;
+        let isSdhFilterActive = true; // Filter is ON by default
 
 
         /**
@@ -394,9 +395,10 @@
         function handleFiles(files) {
             if (!files || files.length === 0) return;
 
+            // Reset button states for new files
             toggleSubsBtn.classList.remove('active');
-            filterSdhBtn.classList.remove('active');
-            isSdhFilterActive = false;
+            filterSdhBtn.classList.remove('active'); // Remove first
+            isSdhFilterActive = true; // Reset state to ON by default
 
 
             const filesArray = Array.from(files);
@@ -436,6 +438,7 @@
             }
             track.mode = 'showing';
             toggleSubsBtn.classList.add('active');
+            filterSdhBtn.classList.add('active'); // Set filter button to active since filter is on
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -675,6 +678,19 @@
                 gainNode.gain.setValueAtTime(boostValue, audioContext.currentTime);
                 volumeLevel.textContent = `${Math.round(boostValue * 100)}%`;
             }
+        });
+
+        // Fullscreen
+        fullscreenBtn.addEventListener('click', () => {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen();
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            fullscreenBtn.textContent = document.fullscreenElement ? '⤡' : '⛶';
         });
 
         // Subtitle toggle

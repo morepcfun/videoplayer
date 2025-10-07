@@ -299,7 +299,7 @@
             <button class="btn" id="toggle-subs-btn" title="Toggle Subtitles">CC</button>
             <button class="btn" id="decrease-subs-size-btn" title="Decrease Subtitle Size">-</button>
             <button class="btn" id="increase-subs-size-btn" title="Increase Subtitle Size">+</button>
-            <button class="btn" id="filter-sdh-btn" title="Filter Descriptions">🧏</button>
+            <button class="btn" id="filter-sdh-btn" title="Show Descriptions">🧏</button>
             <button class="btn" id="help-btn">?</button>
         </div>
     </div>
@@ -368,7 +368,7 @@
         let loopEnd = null;
         let currentSubtitleSize = 2.5; // in vh units
         let parsedSrtCues = [];
-        let isSdhFilterActive = true; // Filter is ON by default
+        let hideSdhDescriptions = true; // Descriptions are HIDDEN by default
 
 
         /**
@@ -397,8 +397,8 @@
 
             // Reset button states for new files
             toggleSubsBtn.classList.remove('active');
-            filterSdhBtn.classList.remove('active'); // Remove first
-            isSdhFilterActive = true; // Reset state to ON by default
+            filterSdhBtn.classList.remove('active');
+            hideSdhDescriptions = true; // Reset state to HIDDEN by default
 
 
             const filesArray = Array.from(files);
@@ -438,7 +438,6 @@
             }
             track.mode = 'showing';
             toggleSubsBtn.classList.add('active');
-            filterSdhBtn.classList.add('active'); // Set filter button to active since filter is on
 
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -449,7 +448,7 @@
 
         /**
          * Clears and re-renders all cues to the track from the parsedSrtCues array.
-         * Applies the SDH filter if it's active.
+         * Hides or shows descriptions based on the hideSdhDescriptions state.
          */
         function renderCues() {
             const track = videoPlayer.textTracks[0];
@@ -462,13 +461,16 @@
 
             // Re-add cues from our stored data
             for (const cueData of parsedSrtCues) {
-                let cueText = cueData.text;
-                if (isSdhFilterActive) {
-                    // Remove text in brackets and clean up extra whitespace
-                    cueText = cueText.replace(/\[.*?\]/g, '').replace(/\s{2,}/g, ' ').trim();
+                let cueText;
+                if (hideSdhDescriptions) {
+                    // If true, HIDE descriptions by removing them
+                    cueText = cueData.text.replace(/\[.*?\]/g, '').replace(/\s{2,}/g, ' ').trim();
+                } else {
+                    // If false, SHOW descriptions by using the original text
+                    cueText = cueData.text;
                 }
 
-                if (cueText) { // Don't add a cue if filtering made it empty
+                if (cueText) { // Don't add a cue if it became empty
                     const cue = new VTTCue(cueData.startTime, cueData.endTime, cueText);
                     track.addCue(cue);
                 }
@@ -716,10 +718,11 @@
             }
         });
 
-        // SDH Filter
+        // SDH Descriptions Toggle
         filterSdhBtn.addEventListener('click', () => {
-            isSdhFilterActive = !isSdhFilterActive;
-            filterSdhBtn.classList.toggle('active', isSdhFilterActive);
+            hideSdhDescriptions = !hideSdhDescriptions;
+            // The button is "active" when descriptions are SHOWN (i.e., when hiding is OFF)
+            filterSdhBtn.classList.toggle('active', !hideSdhDescriptions);
             renderCues();
         });
 

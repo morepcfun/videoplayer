@@ -54,7 +54,7 @@ pointer-events: none;
 display: flex;
 flex-direction: row;
 align-items: center;
-gap: 10px; /* Adjusted gap for more buttons */
+gap: 10px;
 width: auto;
 background-color: rgba(30, 30, 30, 0.85);
 padding: 1rem 1.5rem;
@@ -81,7 +81,7 @@ transform: scale(0.98);
 }
 ::cue {
 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-font-size: var(--subtitle-font-size); /* Use CSS Variable */
+font-size: var(--subtitle-font-size);
 color: #ffffff;
 background-color: transparent;
 text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
@@ -110,7 +110,7 @@ width: 45px;
 height: 45px;
 padding: 0;
 font-size: 1.8rem;
-line-height: 45px; /* Helps vertically center the +/- sign */
+line-height: 45px;
 }
 #toggle-subs-btn.active, #filter-sdh-btn.active {
 background-color: #007bff;
@@ -303,9 +303,7 @@ pick up right where you left off next time you open it. &copy; Johnny Heggelund<
 </div>
 </div>
 <script>
-/**
- * Language strings for the UI.
- */
+
 const lang = {
 title: "Chromebook Video Player",
 chooseFiles: "Open Files (.mp4, .mkv, .srt)",
@@ -319,7 +317,6 @@ loopRemoved: "✅ Loop removed.",
 resumingFrom: (time) => `Resuming from ${time}`
 };
 
-// DOM Element References
 const videoPlayer = document.getElementById('video-player');
 const fileUpload = document.getElementById('file-upload');
 const volumeBooster = document.getElementById('volume-booster');
@@ -339,23 +336,17 @@ const increaseSubsSizeBtn = document.getElementById('increase-subs-size-btn');
 const filterSdhBtn = document.getElementById('filter-sdh-btn');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 
-
-// State variables
 let inactivityTimeout;
 let videoUrl = null;
 let audioContext, gainNode;
 let loopStart = null;
 let loopEnd = null;
-let currentSubtitleSize = 2.5; // in vh units
+let currentSubtitleSize = 2.5;
 let parsedSrtCues = [];
-let hideSdhDescriptions = true; // Descriptions are HIDDEN by default
+let hideSdhDescriptions = true;
 let currentVideoIdentifier = null;
 let saveInterval = null;
 
-
-/**
- * Updates static UI text elements based on the lang object.
- */
 function updateStaticUIText() {
 document.title = lang.title;
 document.getElementById('choose-files-btn').textContent = lang.chooseFiles;
@@ -363,16 +354,10 @@ const trackElement = videoPlayer.querySelector('track');
 if (trackElement) trackElement.label = lang.subtitleLabel;
 }
 
-/**
- * Applies the current subtitle size to the CSS variable.
- */
 function updateSubtitleSize() {
 document.documentElement.style.setProperty('--subtitle-font-size', `${currentSubtitleSize}vh`);
 }
 
-/**
- * Saves the current playback position to localStorage.
- */
 function savePlaybackPosition() {
 if (!currentVideoIdentifier || videoPlayer.currentTime === 0 || videoPlayer.ended) {
 return;
@@ -386,9 +371,6 @@ console.error("Could not save playback position:", e);
 }
 }
 
-/**
- * Loads and applies the saved playback position from localStorage.
- */
 function loadPlaybackPosition() {
 if (!currentVideoIdentifier) return;
 try {
@@ -403,21 +385,15 @@ console.error("Could not load playback position:", e);
 }
 }
 
-/**
- * Handles the selection of local files (video and/or subtitles).
- * @param {FileList} files - The files selected by the user.
- */
 function handleFiles(files) {
 if (!files || files.length === 0) return;
 
-// Reset button states for new files
 toggleSubsBtn.classList.remove('active');
 filterSdhBtn.classList.remove('active');
-hideSdhDescriptions = true; // Reset state to HIDDEN by default
+hideSdhDescriptions = true;
 
-clearInterval(saveInterval); // Stop saving progress for the old video
+clearInterval(saveInterval);
 currentVideoIdentifier = null;
-
 
 const filesArray = Array.from(files);
 const videoFile = filesArray.find(f => f.name.toLowerCase().match(/\.(mp4|mkv)$/));
@@ -429,11 +405,9 @@ videoUrl = URL.createObjectURL(videoFile);
 videoPlayer.src = videoUrl;
 videoPlayer.load();
 
-// Set up for saving progress
 currentVideoIdentifier = `${videoFile.name}-${videoFile.size}`;
 saveInterval = setInterval(savePlaybackPosition, 5000);
 
-// Automatically look for a matching SRT file
 const videoNameWithoutExt = videoFile.name.split('.').slice(0, -1).join('.');
 const expectedSrtName = `${videoNameWithoutExt.toLowerCase()}.srt`;
 const matchingSrtFile = filesArray.find(f => f.name.toLowerCase() === expectedSrtName);
@@ -441,17 +415,13 @@ const matchingSrtFile = filesArray.find(f => f.name.toLowerCase() === expectedSr
 if (matchingSrtFile) {
 loadSrtFile(matchingSrtFile);
 } else if (srtFile) {
-loadSrtFile(srtFile); // Load any other SRT file provided
+loadSrtFile(srtFile);
 }
 } else if (srtFile) {
-loadSrtFile(srtFile); // Load subtitles for the current video
+loadSrtFile(srtFile);
 }
 }
 
-/**
- * Loads and processes a .srt subtitle file.
- * @param {File} file - The .srt file.
- */
 function loadSrtFile(file) {
 const track = videoPlayer.textTracks[0];
 if (!track) {
@@ -468,45 +438,35 @@ parseSrtAndAddCues(e.target.result);
 reader.readAsText(file, 'UTF-8');
 }
 
-/**
- * Clears and re-renders all cues to the track from the parsedSrtCues array.
- * Hides or shows descriptions based on the hideSdhDescriptions state.
- */
 function renderCues() {
 const track = videoPlayer.textTracks[0];
 if (!track) return;
 
-// Clear any existing cues
 while (track.cues && track.cues.length > 0) {
 track.removeCue(track.cues[0]);
 }
 
-// Re-add cues from our stored data
 for (const cueData of parsedSrtCues) {
 let cueText;
 if (hideSdhDescriptions) {
-// If true, HIDE descriptions by removing them
+
 cueText = cueData.text.replace(/\[.*?\]/g, '').replace(/\s{2,}/g, ' ').trim();
 } else {
-// If false, SHOW descriptions by using the original text
+
 cueText = cueData.text;
 }
 
-if (cueText) { // Don't add a cue if it became empty
+if (cueText) {
 const cue = new VTTCue(cueData.startTime, cueData.endTime, cueText);
 track.addCue(cue);
 }
 }
 }
 
-/**
- * Parses SRT content and populates the parsedSrtCues array.
- * @param {string} srtContent - The raw string content of the SRT file.
- */
 function parseSrtAndAddCues(srtContent) {
-parsedSrtCues = []; // Clear previous subtitle data
+parsedSrtCues = [];
 
-const cleanContent = srtContent.replace(/\r\n|\r/g, '\n').replace(/^\uFEFF/, ''); // Normalize line endings and remove BOM
+const cleanContent = srtContent.replace(/\r\n|\r/g, '\n').replace(/^\uFEFF/, '');
 const blocks = cleanContent.split('\n\n');
 
 for (const block of blocks) {
@@ -530,14 +490,9 @@ if (!isNaN(startTime) && !isNaN(endTime) && cueText) {
 parsedSrtCues.push({ startTime, endTime, text: cueText });
 }
 }
-renderCues(); // Initial render after parsing
+renderCues();
 }
 
-/**
- * Converts an SRT time string (HH:MM:SS,ms) to seconds.
- * @param {string} timeString - The timestamp string from the SRT file.
- * @returns {number} - The time in seconds.
- */
 function timeStringToSeconds(timeString) {
 const [hms, ms] = timeString.replace(',', '.').split('.');
 const parts = hms.split(':');
@@ -545,11 +500,8 @@ if (parts.length !== 3) return NaN;
 return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]) + (parseInt(ms) / 1000);
 }
 
-/**
- * Sets up the Web Audio API for volume boosting.
- */
 function setupAudioBooster() {
-if (audioContext) return; // Initialize only once
+if (audioContext) return;
 try {
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 audioContext = new AudioContext();
@@ -564,9 +516,6 @@ volumeBooster.disabled = true;
 }
 }
 
-/**
- * Shows the control panel and starts a timer to hide it again.
- */
 function showControls() {
 controlsContainer.classList.remove('hidden');
 videoPlayer.style.cursor = 'pointer';
@@ -574,9 +523,6 @@ clearTimeout(inactivityTimeout);
 inactivityTimeout = setTimeout(hideControls, 3000);
 }
 
-/**
- * Hides the control panel if the video is playing and the mouse is not over it.
- */
 function hideControls() {
 if (!videoPlayer.paused && !controlsContainer.matches(':hover')) {
 controlsContainer.classList.add('hidden');
@@ -584,10 +530,6 @@ videoPlayer.style.cursor = 'none';
 }
 }
 
-/**
- * Displays a toast notification with a message.
- * @param {string} message - The message to display.
- */
 function showToast(message) {
 if (!toast) return;
 toast.textContent = message;
@@ -597,19 +539,11 @@ toast.classList.remove('show');
 }, 2500);
 }
 
-/**
- * Formats seconds into an HH:MM:SS string.
- * @param {number} seconds - The number of seconds.
- * @returns {string} The formatted time string.
- */
 function formatTime(seconds) {
 if (isNaN(seconds)) return "00:00:00";
 return new Date(seconds * 1000).toISOString().substr(11, 8);
 }
 
-/**
- * Handles the logic for setting/removing loop points.
- */
 function handleLoopKey() {
 if (loopStart === null) {
 loopStart = videoPlayer.currentTime;
@@ -632,9 +566,6 @@ showToast(lang.loopRemoved);
 updateLoopMarkers();
 }
 
-/**
- * Updates the position of the loop markers on the progress bar.
- */
 function updateLoopMarkers() {
 const duration = videoPlayer.duration;
 if (loopStart !== null && duration > 0) {
@@ -651,19 +582,14 @@ loopEndMarker.style.display = 'none';
 }
 }
 
-/** Shows the shortcuts modal. */
 function showShortcuts() {
 shortcutsModal.style.display = 'flex';
 }
 
-/** Hides the shortcuts modal. */
 function hideShortcuts() {
 shortcutsModal.style.display = 'none';
 }
 
-// --- Event Listeners ---
-
-// File handling
 fileUpload.addEventListener('change', (e) => {
 handleFiles(e.target.files);
 e.target.value = null;
@@ -694,7 +620,6 @@ showToast(lang.noVideoOnClipboard);
 }
 });
 
-// Volume booster
 volumeBooster.addEventListener('input', (e) => {
 if (!gainNode) setupAudioBooster();
 if (gainNode) {
@@ -704,7 +629,6 @@ volumeLevel.textContent = `${Math.round(boostValue * 100)}%`;
 }
 });
 
-// Fullscreen
 fullscreenBtn.addEventListener('click', () => {
 if (document.fullscreenElement) {
 document.exitFullscreen();
@@ -717,7 +641,6 @@ document.addEventListener('fullscreenchange', () => {
 fullscreenBtn.textContent = document.fullscreenElement ? '⤡' : '⛶';
 });
 
-// Subtitle toggle
 toggleSubsBtn.addEventListener('click', () => {
 const track = videoPlayer.textTracks[0];
 if (!track || parsedSrtCues.length === 0) return;
@@ -727,7 +650,6 @@ track.mode = isShowing ? 'hidden' : 'showing';
 toggleSubsBtn.classList.toggle('active', !isShowing);
 });
 
-// Subtitle size controls
 increaseSubsSizeBtn.addEventListener('click', () => {
 currentSubtitleSize += 0.2;
 updateSubtitleSize();
@@ -740,16 +662,13 @@ updateSubtitleSize();
 }
 });
 
-// SDH Descriptions Toggle
 filterSdhBtn.addEventListener('click', () => {
 hideSdhDescriptions = !hideSdhDescriptions;
-// The button is "active" when descriptions are SHOWN (i.e., when hiding is OFF)
+
 filterSdhBtn.classList.toggle('active', !hideSdhDescriptions);
 renderCues();
 });
 
-
-// Player controls visibility
 videoPlayer.addEventListener('play', showControls);
 videoPlayer.addEventListener('pause', showControls);
 videoPlayer.addEventListener('mouseenter', showControls);
@@ -757,7 +676,6 @@ controlsContainer.addEventListener('mouseenter', showControls);
 document.addEventListener('mousemove', showControls);
 videoPlayer.addEventListener('click', () => videoPlayer.paused ? videoPlayer.play() : videoPlayer.pause());
 
-// Player time and progress update
 videoPlayer.addEventListener('timeupdate', () => {
 if (loopStart !== null && loopEnd !== null) {
 if (videoPlayer.currentTime >= loopEnd || videoPlayer.currentTime < loopStart) {
@@ -773,22 +691,18 @@ progressBarFill.style.width = `${progress}%`;
 videoPlayer.addEventListener('loadedmetadata', updateLoopMarkers);
 videoPlayer.addEventListener('loadedmetadata', loadPlaybackPosition);
 
-
-// Progress bar seeking
 progressBarContainer.addEventListener('click', (e) => {
 const rect = progressBarContainer.getBoundingClientRect();
 const pos = (e.clientX - rect.left) / rect.width;
 videoPlayer.currentTime = pos * videoPlayer.duration;
 });
 
-// Modal visibility
 helpBtn.addEventListener('click', showShortcuts);
 closeModalBtn.addEventListener('click', hideShortcuts);
 shortcutsModal.addEventListener('click', (e) => {
 if (e.target === shortcutsModal) hideShortcuts();
 });
 
-// Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
 if (e.key === 'Escape') {
 hideShortcuts();
@@ -827,7 +741,6 @@ break;
 }
 });
 
-// --- Initial Setup ---
 updateStaticUIText();
 updateSubtitleSize();
 showControls();

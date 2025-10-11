@@ -1,1 +1,44 @@
-I originally created this video player because I've always been annoyed by the low volume of many laptops, especially Chromebooks, which are my favorite computers in every other way. So I decided to create my own video player that can be run directly in the browser. Over time, many new features have been added, and I've probably refined this code more than 200 times now. The first feature I created was the ability to increase the volume by 400%, then I added support for .srt subtitle files. Often, subtitles that you download are made for deaf people, and that's great, but we who can hear don't always want this extra text. So I created a filter that removes this extra text, and displays all subtitles in the standard way. If you need the extra text, there's a button on the toolbar to turn it on. I've also made it so that all subtitles are displayed in a nice way with the same font, and you can adjust the size of the subtitles with the - and + buttons. I have also added a loop function that allows you to loop between two points in the video by first pressing L for the start point and then L again for the end point. The video will then loop between these two points until you press L again to exit the loop. There are also buttons to turn the subtitles on and off, and a button to turn full screen on and off. In my latest update, the player now remembers where you left off in a video, so you can pick up right where you left off next time you open it. © Johnny Heggelund
+# Chromebook 🍿 Video Player
+
+[![Status](https://img.shields.io/badge/status-active-success.svg)](https://github.com/morepcfun/videoplayer)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](/LICENSE)
+
+> A smart, browser-based video player designed for Chromebooks and laptops. Features a powerful **400% volume boost**, advanced `.srt` subtitle support with SDH filtering, playback resume, and more.
+
+**➡️ [Launch the Video Player Here](https://morepcfun.github.io/videoplayer/) ⬅️**
+
+---
+
+### Why This Video Player?
+
+This player was built to solve common frustrations with watching videos on laptops. It's a lightweight, powerful, and private solution that runs entirely in your browser. No installation needed.
+
+---
+
+## Key Features ✨
+
+* **🔊 400% Volume Boost:** Overcomes the problem of quiet laptop speakers by allowing you to boost the audio gain up to four times the original volume.
+* **srt Subtitle Support:** Simply drag-and-drop your `.mp4` and `.srt` files, and the player will automatically load the subtitles.
+* **🧠 Smart SDH Filtering:** Intelligently filters out descriptive text for the hearing impaired (e.g., `[Tense music plays]`) for a cleaner viewing experience. You can toggle this feature on and off.
+* **💾 Playback Resume:** The player automatically remembers your position in a video. Close the tab and come back later—it will offer to resume right where you left off.
+* **🔁 Precision Looping:** Easily set start and end points for a loop using the 'L' key, perfect for studying a specific scene.
+* **⌨️ Full Keyboard Control:** Control everything from playback and volume to seeking and subtitles with intuitive keyboard shortcuts.
+* **🔒 100% Private:** All files are processed directly in your browser. Nothing is ever uploaded to a server.
+
+---
+
+## How to Use
+
+It's incredibly simple:
+1.  **Open the player:** [Click here to launch it.](https://morepcfun.github.io/videoplayer/)
+2.  **Load your files:**
+    * Click the **"Open Files"** button and select your video and subtitle files.
+    * **OR**, simply **drag and drop** your files anywhere onto the page.
+    * **OR**, copy a video file to your clipboard and **paste** it onto the page.
+3.  **Enjoy!** Use the on-screen controls or press `?` to see the list of keyboard shortcuts.
+
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
